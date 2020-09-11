@@ -1,16 +1,16 @@
 from selenium import webdriver
-from selenium.webdriver.common.keys import Keys
 from time import sleep
-import pandas as pd
-import numpy as np
+import csv
 
+job_title_to_search = 'Business Intelligence Analyst'
+location_to_search = 'Denver, Colorado'
 
 
 
 class JobBot():
     def __init__(self):
         chrome_options = webdriver.ChromeOptions()
-        #chrome_options.add_argument('headless')
+        chrome_options.add_argument('headless')
         chrome_options.add_argument('incognito')
         self.driver = webdriver.Chrome(executable_path='/Users/jmsitunes/Desktop/projects/auto_grocery/chromedriver',
                                        options=chrome_options)
@@ -30,10 +30,10 @@ class JobBot():
         exit_autocomplete = self.driver.find_element_by_xpath('/html/body/main/section[1]')
         search_btn = self.driver.find_element_by_xpath('/html/body/main/section[1]/section/div[2]/button[2]')
 
-        job_title_input.send_keys('Business Intelligence Analyst')
+        job_title_input.send_keys(job_title_to_search)
         sleep(3)
         location_input.clear()
-        location_input.send_keys('Denver, Colorado')
+        location_input.send_keys(location_to_search)
         sleep(2)
         exit_autocomplete.click()
         sleep(2)
@@ -59,25 +59,36 @@ class JobBot():
             last_height = new_height
 
         links = self.driver.find_elements_by_xpath("//*[@href]")
-        clean_links = [x for x in links if "jobs/view" in x.get_attribute('href')]
-        jobs_info = []
+        clean_links = [x.get_attribute('href') for x in links if "jobs/view" in x.get_attribute('href')]
+        jobs_info = [[1,2,3]]
 
         for link in clean_links:
             # pull up webpage & full job description
             self.driver.get(str(link)) # problem here. evidently this isn't a string and it needs to be and str() isn't working
             show_more_btn = self.driver.find_element_by_xpath('/html/body/main/section[1]/section[3]/div[1]/section/button[1]')
             show_more_btn.click()
-            sleep(1)
+            sleep(2)
 
             # scrape job info
-            job_title = self.driver.find_element_by_class_name('topcard_title')
+            job_title = self.driver.find_element_by_xpath('/html/body/main/section[1]/section[2]/div[1]/div[1]/a/h2')
             data = self.driver.find_element_by_class_name('description')
             items = data.find_elements_by_tag_name('li')
-            items.insert(0, job_title.text)
-            jobs_info.append(items.text)
-            break
-        for job in jobs_info:
-            print(job)
+
+            # add items to list
+            job_info = []
+            items.insert(0, job_title) # to ensure job title will be the column header once we get it into a csv
+
+            for item in items:
+                job_info.append(item.text)
+
+            jobs_info.append(job_info)
+
+        # download data
+        with open(job_title_to_search + '.csv', 'w', newline='') as f:
+            writer = csv.writer(f)
+            writer.writerows(jobs_info)
+
+
 
 
 
