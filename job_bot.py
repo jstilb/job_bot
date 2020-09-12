@@ -2,7 +2,7 @@ from selenium import webdriver
 from time import sleep
 import csv
 
-job_title_to_search = 'Business Intelligence Analyst'
+job_title_to_search = 'Data Analyst'
 location_to_search = 'Denver, Colorado'
 
 
@@ -60,28 +60,32 @@ class JobBot():
 
         links = self.driver.find_elements_by_xpath("//*[@href]")
         clean_links = [x.get_attribute('href') for x in links if "jobs/view" in x.get_attribute('href')]
-        jobs_info = [[1,2,3]]
+        jobs_info = []
 
         for link in clean_links:
-            # pull up webpage & full job description
-            self.driver.get(str(link)) # problem here. evidently this isn't a string and it needs to be and str() isn't working
-            show_more_btn = self.driver.find_element_by_xpath('/html/body/main/section[1]/section[3]/div[1]/section/button[1]')
-            show_more_btn.click()
-            sleep(2)
+            try:
+                # pull up webpage & full job description
+                self.driver.get(str(link))
+                show_more_btn = self.driver.find_element_by_xpath('/html/body/main/section[1]/section[3]/div/section/button[1]')
+                show_more_btn.click()
+                sleep(2)
 
-            # scrape job info
-            job_title = self.driver.find_element_by_xpath('/html/body/main/section[1]/section[2]/div[1]/div[1]/a/h2')
-            data = self.driver.find_element_by_class_name('description')
-            items = data.find_elements_by_tag_name('li')
+                # scrape job info
+                job_title = self.driver.find_element_by_xpath('/html/body/main/section[1]/section[2]/div[1]/div[1]/a/h2')
+                data = self.driver.find_element_by_class_name('description')
+                items = data.find_elements_by_tag_name('li')
 
-            # add items to list
-            job_info = []
-            items.insert(0, job_title) # to ensure job title will be the column header once we get it into a csv
+                # add items to list
+                job_info = []
+                items.insert(0, job_title) # to ensure job title will be the column header once we get it into a csv
 
-            for item in items:
-                job_info.append(item.text)
+                for item in items:
+                    job_info.append(item.text)
 
-            jobs_info.append(job_info)
+                jobs_info.append(job_info)
+            except:
+                pass
+
 
         # download data
         with open(job_title_to_search + '.csv', 'w', newline='') as f:
