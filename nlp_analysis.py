@@ -1,11 +1,19 @@
-from nltk.tokenize import word_tokenize
+from nltk.util import pad_sequence
+from nltk.util import bigrams
+from nltk.util import ngrams
+from nltk.util import everygrams
+from nltk.lm.preprocessing import pad_both_ends
+from nltk.lm.preprocessing import flatten
+from nltk.tokenize import word_tokenize, sent_tokenize
 from nltk.stem import WordNetLemmatizer
 from nltk.corpus import stopwords
+from nltk.lm import MLE
 import heapq
 import csv
 
 file = 'Data Analyst.csv' # file to be analyzed
-n = 20 # how many desired results you want in your bag of words model
+n_bow = 20 # how many desired results you want in your bag of words model
+n_grams = 3
 
 # open scraped job data
 with open(file, newline='') as csvfile:
@@ -13,11 +21,11 @@ with open(file, newline='') as csvfile:
     data_lists = list(data)
 
 # remove job titles for bag of words model
-for list in data_lists:
-    if len(list) > 0:
-        del list[0]
+for ls in data_lists:
+    if len(ls) > 0:
+        del ls[0]
     else:
-        del list
+        del ls
 
 
 # normalize data
@@ -51,27 +59,46 @@ stop_words.update(['business', 'experience', 'information', 'system', 'level', '
                    'application', 'manager', 'make', 'insight', 'relationship', 'result', 'include', 'request',
                    'opportunity', 'best',  'basic', 'duty', 'delivery', 'case', 'needed', 'conduct', 'excellent',
                    'initiative'])
-tokens = word_tokenize(bow_string)
+word_tokens = word_tokenize(bow_string)
+tokenized_text = [list(map(str.lower, word_tokenize(sent)))
+                  for sent in sent_tokenize(bow_string)]
 lemmatizer = WordNetLemmatizer()
-clean_tokens = []
+clean_word_tokens = []
 
 
-for token in tokens:
-    if token not in stop_words:
-        clean_tokens.append(lemmatizer.lemmatize(token))
+
+
+
+#for token in word_tokens:
+    #if token not in stop_words:
+        #clean_word_tokens.append(lemmatizer.lemmatize(token))
 
 
 # get word frequency (bag of words)
 word2count = {}
-for word in clean_tokens:
-    if word not in word2count.keys():
-        word2count[word] = 1
-    else:
-        word2count[word] += 1
+# for word in clean_tokens:
+    # if word not in word2count.keys():
+        # word2count[word] = 1
+    # else:
+        # word2count[word] += 1
 
 def sort_key(x):
     return -x[1], x[0]
 
-top_n_results = heapq.nsmallest(n, word2count.items(), key=sort_key)
+# top_n_results = heapq.nsmallest(n, word2count.items(), key=sort_key)
 
-print(top_n_results)
+# print(top_n_results)
+
+
+# n-grams model
+padded_sent = list(pad_sequence(tokenized_text[0], pad_left=True, left_pad_symbol="<s>",
+                                pad_right=True, right_pad_symbol="</s>", n=n_grams))
+# left off https://www.kaggle.com/alvations/n-gram-language-model-with-nltk
+print(three_grams)
+
+
+
+# train_data, padded_sents = padded_everygram_pipeline(n_grams, tokenized_text)
+# model = MLE(n)
+# model.fit(train_data, padded_sents)
+# print(model.vocab.lookup(tokenized_text[0]))
