@@ -1,8 +1,9 @@
 from selenium import webdriver
 from time import sleep
 import csv
+import pandas as pd
 
-job_title_to_search = 'Tableau Analyst'
+job_title_to_search = 'Business Intelligence Analyst'
 location_to_search = 'Denver, Colorado'
 
 
@@ -73,20 +74,24 @@ class JobBot():
             try:
                 # pull up webpage & full job description
                 self.driver.get(str(link))
-                show_more_btn = self.driver.find_element_by_xpath(
-                    '/html/body/main/section[1]/section[3]/div/section/button[1]')
-                show_more_btn.click()
+                sleep(2)
+                try:
+                    show_more_btn = self.driver.find_element_by_xpath(
+                    '/html/body/main/section[1]/section[3]/div[1]/section/button[1]')
+                    show_more_btn.click()
+                except:
+                    pass
                 sleep(2)
 
                 # scrape job info
                 job_title = self.driver.find_element_by_xpath(
-                    '/html/body/main/section[1]/section[2]/div[1]/div[1]/a/h2')
+                    '/html/body/main/section[1]/section[2]/div[1]/div[1]/h1')
                 data = self.driver.find_element_by_class_name('description')
                 items = data.find_elements_by_tag_name('li')
 
                 # add items to list
                 job_info = []
-                items.insert(0, job_title)  # to ensure job title will be the column header once we get it into a csv
+                job_info.append(job_title.text)  # to ensure job title will be the column header once we get it into a csv
 
                 for item in items:
                     job_info.append(item.text)
@@ -95,10 +100,26 @@ class JobBot():
             except:
                 pass
 
+        # resize lists for dataframe conversion
+        try:
+            max_len_list = len(max(jobs_info))
+        except ValueError:
+            print("xpaths have likely been changed")
+
+        for lst in jobs_info:
+            if len(lst) < max_len_list:
+                lst.append('')
+            else:
+                continue
+
+        df = pd.DataFrame(jobs_info)
+        t_df = df.T    # transpose rows to columns
+        t_df.columns = t_df.iloc[0]
+        t_df = t_df.drop(t_df.index[0]).reset_index(drop=True)
+
         # download data
-        with open(job_title_to_search + '.csv', 'w', newline='') as f:
-            writer = csv.writer(f)
-            writer.writerows(jobs_info)
+        t_df.to_csv(job_title_to_search + '.csv', index=False)
+
 
 
 bot = JobBot()
