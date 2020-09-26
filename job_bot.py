@@ -1,7 +1,6 @@
 from selenium import webdriver
 from time import sleep
-import csv
-import pandas as pd
+import gzip
 
 job_title_to_search = 'Business Intelligence Analyst'
 location_to_search = 'Denver, Colorado'
@@ -10,8 +9,10 @@ location_to_search = 'Denver, Colorado'
 class JobBot():
     def __init__(self):
         chrome_options = webdriver.ChromeOptions()
-        chrome_options.add_argument('headless')
-        chrome_options.add_argument('incognito')
+        chrome_options.add_argument('headless') # negates visual of interaction
+        chrome_options.add_argument('--no-sandbox') # bypasses OS security
+        chrome_options.add_argument("--disable-dev-shm-usage") # overcome limited resources problem
+        chrome_options.add_argument('incognito') # opens incognito window
         self.driver = webdriver.Chrome(executable_path='/Users/jmsitunes/Desktop/projects/auto_grocery/chromedriver',
                                        options=chrome_options)
         self.driver.delete_all_cookies()
@@ -67,7 +68,9 @@ class JobBot():
         # collect all job links in search result
         links = self.driver.find_elements_by_xpath("//*[@href]")
         clean_links = [x.get_attribute('href') for x in links if "jobs/view" in x.get_attribute('href')]
-        jobs_info = []
+        job_titles = []
+        jobs_txt = ''
+        cnt = 0
 
         # searches each job link and scrapes information
         for link in clean_links:
@@ -75,50 +78,30 @@ class JobBot():
                 # pull up webpage & full job description
                 self.driver.get(str(link))
                 sleep(2)
-                try:
-                    show_more_btn = self.driver.find_element_by_xpath(
+                show_more_btn = self.driver.find_element_by_xpath(
                     '/html/body/main/section[1]/section[3]/div[1]/section/button[1]')
-                    show_more_btn.click()
-                except:
-                    pass
+                show_more_btn.click()
                 sleep(2)
 
                 # scrape job info
                 job_title = self.driver.find_element_by_xpath(
                     '/html/body/main/section[1]/section[2]/div[1]/div[1]/h1')
-                data = self.driver.find_element_by_class_name('description')
-                items = data.find_elements_by_tag_name('li')
+                job_titles.append(job_title.text)
 
-                # add items to list
-                job_info = []
-                job_info.append(job_title.text)  # to ensure job title will be the column header once we get it into a csv
+                txt = self.driver.find_element_by_class_name('description').text
+                jobs_txt = jobs_txt + ' ' + txt
 
-                for item in items:
-                    job_info.append(item.text)
-
-                jobs_info.append(job_info)
             except:
                 pass
+        self.driver.quit()
 
-        # resize lists for dataframe conversion
-        try:
-            max_len_list = len(max(jobs_info))
-        except ValueError:
-            print("xpaths have likely been changed")
+        # download file
+        if not jobs_txt:
+            print('string is empty. Error occurring in scraping.')
+        else:
+            with gzip.open('/Users/jmsitunes/Desktop/projects/job_bot/' + job_title_to_search + '.txt.gz', 'wb') as f:
+                f.write(jobs_txt.encode())
 
-        for lst in jobs_info:
-            if len(lst) < max_len_list:
-                lst.append('')
-            else:
-                continue
-
-        df = pd.DataFrame(jobs_info)
-        t_df = df.T    # transpose rows to columns
-        t_df.columns = t_df.iloc[0]
-        t_df = t_df.drop(t_df.index[0]).reset_index(drop=True)
-
-        # download data
-        t_df.to_csv(job_title_to_search + '.csv', index=False)
 
 
 
