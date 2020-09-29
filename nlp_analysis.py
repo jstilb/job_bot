@@ -1,104 +1,63 @@
-from nltk.util import pad_sequence
-from nltk.util import bigrams
-from nltk.util import ngrams
-from nltk.util import everygrams
-from nltk.lm.preprocessing import pad_both_ends
-from nltk.lm.preprocessing import flatten
+from nltk import pos_tag
 from nltk.tokenize import word_tokenize, sent_tokenize
 from nltk.stem import WordNetLemmatizer
 from nltk.corpus import stopwords
-from nltk.lm import MLE
 import heapq
-import csv
-import pandas as pd
 import gzip
 
+# inputs
 file = 'Business Intelligence Analyst.txt.gz'  # file to be analyzed
+n = 20  # how many desired results you want in your bag of words model
+stop_words_input = ['a', 'u', 'at', 'year', 'le', 'etc', 'required', 'requirement',
+                  'experience', 'skill', 'solution', 'business', 'organization', 'employer',
+                  'application', 'environment', 'system', 'law', 'preferred', 'work']
+
 
 # open scraped job data
 with gzip.open(file, 'rb') as f:
-    file_content = f.read()
+    data = f.read().decode('utf-8')
 
+# sentence and work tokenization & normalization
+lemmatizer = WordNetLemmatizer()
+stop_words = set(stopwords.words('english'))  # remove general stop words
+final_stop_words = stop_words.union(stop_words_input)  # remove input stop words
 
-# Bag of Words Inputs
-n_bow = 20 # how many desired results you want in your bag of words model
-bow_stp_wrds = ['business', 'experience', 'information', 'system', 'level', 'work', 'team', 'process', 'function',
-                   'skill', 'ability', 'requirement', 'type', 'year', 'technology', 'full', 'timejob', 'support',
-                   'technical', '’', 'knowledge', 'problem', ';', 'working', 'degree', 'related', ':', 'including',
-                   'new', 'associateemployment', 'quality', 'understanding', 'issue', 'need', 'software', 'develop',
-                   'strong', 'application', 'internal', 'required', 'written', 'ensure', 'identify', 'maintain',
-                   'provide', 'technologyindustries', 'multiple', 'environment', 'levelemployment', 'change',
-                   'developmentsalesindustries', 'across', 'service', 'high', 'within', 'using', 'seniority', 'plan',
-                   'financial', 'time', 'assist', 'document', 'computer', 'industry', 'understand', 'training',
-                   'recommendation', 'task', 'able', 'servicescomputer', 'skill', 'requirement', 'year', 'system',
-                   'solution', 'user', 'process', 'issue', 'need', 'tool', 'problem',  'use', 'may', 'detail',
-                   'operation', 'etc', 'preferred', 'must', 'create', 'case', 'meet', 'company', 'end', "'s",
-                   'relationship', 'functional', 'practice', 'key', 'well', 'opportunity', 'external', 'partner',
-                   'insight', 'effectively', 'technique', 'procedure', 'performance', 'office', 'role', 'self',
-                   'health', 'expert', 'based', 'relevant', 'build', 'field', 'skill', 'requirement', 'professional',
-                   'result', 'various', '5', 'meeting', 'year', 'system', 'solution', 'process', 'issue', 'need',
-                   'tool', 'problem',  'review', 'recommendation', 'user', 'improvement', 'operation', 'technique',
-                   'practice', 'organization', 'standard', 'member', '2', 'help', 'oriented', 'equivalent', 'source',
-                   'application', 'manager', 'make', 'insight', 'relationship', 'result', 'include', 'request',
-                   'opportunity', 'best',  'basic', 'duty', 'delivery', 'case', 'needed', 'conduct', 'excellent',
-                   'initiative']
+tokens = [word_tokenize(sen) for sen in sent_tokenize(data)]
+normalized_tokens = []
 
-# N Grams Inputs
-n_grams = 3
+def normalize(tkns):
+    for phrase in tkns:
+        new_phrase = []
+        for word in phrase:
+            if word not in final_stop_words and word.isalnum():  # removes punctuation and stopwords
+                new_phrase.append(lemmatizer.lemmatize(word.lower()))  # lowers case and lemmatizes
+            else:
+                continue
+        normalized_tokens.append(new_phrase)
 
-def bow_model(data, stp_wrds, n):  # need to re-examine how the dataframe is being tokenized. (basically rebuild)
-    # steps: https://medium.com/@ageitgey/natural-language-processing-is-fun-9a0bff37854e
-    # tokenize sentences using nltk.sent_tokenizer
-    # tokenize words
-    bow_string = [j for i in data for j in i]
-    bow_string = "".join(bow_string)
-    bow_string = bow_string.lower()
-    puncts = '.?!,&-()â€™/+'
-    for sym in puncts:
-        bow_string = bow_string.replace(sym,' ')
+# part of speech tagging
+tags = []
+def tag(phrases):
+    for phrase in phrases:
+        tags.append(pos_tag(phrase))
 
-    # remove stop words
-    stop_words = set(stopwords.words('english'))      # remove general stop words
-    stop_word_w_input = stop_words.union(stp_wrds)                        # remove input stop words
-    job_titles = []                                   # remove job titles as stop words
-
-    for col in data.columns:
-        tokenized_titles = word_tokenize(col)
-        for tkn in tokenized_titles:
-            job_titles.append(tkn)
-
-    final_stop_words = stop_words.union(job_titles)
-
-    # tokenize data
-    word_tokens = word_tokenize(bow_string)
-
-    # lemmatize data
-    lemmatizer = WordNetLemmatizer()
-    clean_word_tokens = []
-
-    for token in word_tokens:
-        if token not in final_stop_words:
-            clean_word_tokens.append(lemmatizer.lemmatize(token))
-
-    # get word frequency (bag of words)
-    word2count = {}
-    for word in clean_word_tokens:
-        if word not in word2count.keys():
-            word2count[word] = 1
+# get word frequency (bag of words)
+bow = {}
+def get_bow_count(phrases):
+    for phrase in phrases:
+        for word in phrase:
+            if word not in bow.keys():
+                bow[word] = 1
         else:
-            word2count[word] += 1
+            bow[word] += 1
 
-    def sort_key(x):
-        return -x[1], x[0]
+def sort_key(x):
+    return -x[1], x[0]
 
-    top_n_results = heapq.nsmallest(n, word2count.items(), key=sort_key)
+def bag_of_words(x):
+    normalize(tokens)
+    get_bow_count(normalized_tokens)
+    top_n_results = heapq.nsmallest(x, bow.items(), key=sort_key)
     print(top_n_results)
 
-# bow_model(df, bow_stp_wrds, n_bow)
-
-# n-grams model
-
-
-
-
-
+bag_of_words(n)
