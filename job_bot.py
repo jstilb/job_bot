@@ -2,7 +2,7 @@ from selenium import webdriver
 from time import sleep
 import gzip
 
-job_title_to_search = 'Business Intelligence Analyst'
+job_title_to_search = 'Data Analyst'
 location_to_search = 'Denver, Colorado'
 
 

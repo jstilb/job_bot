@@ -6,14 +6,26 @@ from nltk.util import ngrams
 import collections
 import heapq
 import gzip
+import csv
 
 # inputs
-file = 'Business Intelligence Analyst.txt.gz'  # file to be analyzed
-n = 20  # how many desired results you want in your bag of words model
-g = 5
-stop_words_input = ['a', 'u', 'at', 'year', 'le', 'etc', 'required', 'requirement', 'experience', 'skill', 'solution',
-                    'business', 'organization', 'employer', 'application', 'environment', 'system', 'law', 'preferred',
-                    'work', 'opportunity', 'status', 'world', 'role', 'position', 'service', 'action']
+file = 'Business Intelligence Analyst.txt.gz'  # file to be analyzed (should be in project folder)
+n = 20   # how many desired results you want in your bag of words model
+g = 5    # desired number of grams for n-grams model
+l = 200  # limit for n-grams results
+save_file_as = "BI_Analyst_Results.txt"
+save_location = '/Users/jmsitunes/Desktop/projects/job_bot/' # where you plan to save results
+stop_words_input = ['a', 'u', 'at', 'year', 'le', 'etc', 'requirement', 'accredited', 'college', 'university',
+                    'organization', 'employer', 'law', 'disability', 'accommodation', 'protected', 'race', 'color',
+                    'work', 'opportunity', 'status', 'world', 'position', 'service', 'action', 'sexual', 'gender',
+                    'veteran', 'sex', 'orientation', 'age', 'national', 'origin', 'seniority', 'employment', 'applicant',
+                    'level', 'developmentsales', 'servicescomputer', 'associate', 'function', 'job', 'softwarefinancial',
+                    'religion']
+# 'a', 'u', 'at', 'year', 'le', 'etc', 'required', 'requirement', 'experience', 'skill', 'solution',
+#                     'business', 'organization', 'employer', 'application', 'environment', 'system', 'law', 'preferred',
+#                     'work', 'opportunity', 'status', 'world', 'role', 'position', 'service', 'action'
+
+
 
 # open scraped job data
 with gzip.open(file, 'rb') as f:
@@ -25,10 +37,10 @@ stop_words = set(stopwords.words('english'))  # remove general stop words
 final_stop_words = stop_words.union(stop_words_input)  # remove input stop words
 
 tokens = [word_tokenize(sen) for sen in sent_tokenize(data)]
-normalized_tokens = []
-
 
 def normalize(tkns):
+    global normalized_tokens
+    normalized_tokens = []
     for phrase in tkns:
         new_phrase = []
         for word in phrase:
@@ -72,13 +84,20 @@ def bag_of_words(x):
     top_n_results = heapq.nsmallest(x, bow.items(), key=sort_key)
     print(top_n_results)
 
-def extract_ngrams(data, num):
+def extract_ngrams(data, grms, limit):
+    normalize(data)
     extracted_ngrams = []
-    for phrase in data:
-        n_grams = ngrams(phrase, num)
+    for phrase in normalized_tokens:
+        n_grams = ngrams(phrase, grms)
         extracted_ngrams = extracted_ngrams + [' '.join(grams) for grams in n_grams]
-    results = collections.Counter(extracted_ngrams).most_common()
+    global results
+    results = collections.Counter(extracted_ngrams).most_common()[:limit]
     print(results)
 
-normalize(tokens)
-extract_ngrams(normalized_tokens, g)
+# def save_results(location, save_file, limit):
+#     extract_ngrams(tokens, g, l)
+#     with csv.open(location + save_file, 'wb') as f:
+#         f.write(results[:limit])
+#
+# save_results(save_location, save_file_as, l)
+# extract_ngrams(tokens, g, l)
